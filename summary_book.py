@@ -63,11 +63,33 @@ def is_table_of_contents(text, chapter_lv1):
 
     # Kiểm tra xem có ít nhất một dòng chứa các tiêu đề có độ sâu lồng nhau không
     for i in range(len(lines)):
-        if lines[i].strip().startswith(tuple(number_markers)):
+        if lines[i].strip().startswith(chapter_lv1):
             for j in range(i+1, min(i+4, len(lines))):
                 if lines[j].strip().startswith(tuple(number_markers)):
                     return True
     return False
+
+
+def clear_text(text):
+    SAVE_KEY_REGEX_PATTERN = re.compile(
+        r"[^a-zA-Z0-9\s\t\.\,{}{}()\-/]".format(
+            re.escape(
+                "ỹáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ"
+            ),
+            re.escape(
+                "ỸÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴĐ"
+            )
+        )
+    )
+    text = SAVE_KEY_REGEX_PATTERN.sub(" ", text)
+    text = re.sub(r"\t", " ", text)
+    text = re.sub(r"\n", " ", text)
+    text = re.sub(r"\.{2,}", "", text)
+    text = re.sub(r"  +", " ", text)
+    text = re.sub(r" \.", ".", text)
+    text = text.rstrip()
+    return text
+# Tìm kiếm menu của sách
 
 
 def extract_table_of_contents(list_page):
@@ -75,38 +97,49 @@ def extract_table_of_contents(list_page):
     title_keywords = ['chương', 'phần', "chapter"]
     number_chapter = ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.',
                       '10.', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
+
     # Kết hợp danh sách title_keywords và number_chapter
-    combined_markers = tuple(number_chapter + ['{} {}'.format(
+    chapter_lv1 = tuple(number_chapter + ['{} {}'.format(
         keyword, num) for keyword in title_keywords for num in range(1, 11)])
 
-    page_menu = []
-    for page in list_page:
+    last_toc_page = None
+    table_of_contents = []
+    for i, page in enumerate(list_page):
         lines_rects = detect_line_word(page)
-        list_test = []
         is_menu = 0
+        page_content = []
+
         for line in lines_rects:
             roi = crop_box(page, line)
-            # text_line = detect_text_area(roi)
             text_line = pytesseract.image_to_string(roi, lang="vie")
+
             if len(text_line) != 0:
-                text_line = re.sub(r"[\n]", " ", text_line)
-                if is_table_of_contents(text_line, combined_markers):
+                text_line = clear_text(text_line)
+                if is_table_of_contents(text_line, chapter_lv1):
                     is_menu += 1
-                list_test.append(text_line)
-        if is_menu > 4:
-            page_menu.append(list_test)
-        #     # Vẽ hình chữ nhật lớn xung quanh tất cả các hình chữ nhật con
-        #     cv2.rectangle(page, (line[0], line[1]), (line[2], line[3]), (0, 255, 0), 2)
+                page_content.append(text_line)
+        print(f"lines_rects - is_menu\n{len(lines_rects)}-{is_menu}")
+        if is_menu == 0 or is_menu < (len(lines_rects) - 10):
+            continue
+        else:
+            last_toc_page = i + 1
+            table_of_contents += page_content
 
-        # plt.rcParams['figure.figsize'] = (16, 16)
-        # plt.imshow(page)
-        # plt.show()
-    # print("page_menu", page_menu)
-    return page_menu
+    return last_toc_page, table_of_contents
 
 
-def ocr_image(image):
+def ocr_content(list_page):
     text = ""
+
+    for page in list_page:
+        lines_rects = detect_line_word(page)
+
+        for line in lines_rects:
+            roi = crop_box(page, line)
+            text_line = pytesseract.image_to_string(roi, lang="vie")
+            text_line = clear_text(text_line)
+
+            text += text_line + " "
     return text
 
 
@@ -119,12 +152,6 @@ def correct_text(text):
 def keyword_text(text):
     key_word = []
     return key_word
-
-
-# Tìm kiếm menu của sách
-def find_menu(text):
-    menu_book = []
-    return menu_book
 
 
 # Chia text theo chương
@@ -156,12 +183,30 @@ def sumary_book(book_link, size_sumary, is_page=True):
     print("numbers_page_use_check_menu", numbers_page_use_check_menu)
     start = time.time()
     list_page_check_menu = pages_np[:numbers_page_use_check_menu]
-    # check_menu =
-    extract_table_of_contents(list_page_check_menu)
+
+    last_toc_page, table_of_contents = extract_table_of_contents(
+        list_page_check_menu)
+    pages_np_content = pages_np[last_toc_page:]
+
+    # OCR nội dung sách
+    print("OCR nội dung sách.")
+    # content_book = ocr_content(pages_np_content)
     end = time.time()
 
     print(f"time Step 2:{(end-start):.03f}s")
     print(f"words_to_summarize:{words_to_summarize}")
+
+    # with open("./datasets/data_text/book/content.txt", "w", encoding="utf-8") as file:
+    #     file.write(content_book)
+
+    text_table_of_contents = ""
+    for text_line in table_of_contents:
+        text_table_of_contents += text_line + "\n"
+
+    with open("./datasets/data_text/book/table_of_contents.txt", "w", encoding="utf-8") as file:
+        file.write(text_table_of_contents)
+    # print(f"last_toc_page:{last_toc_page}")
+    # print(f"table_of_contents:{table_of_contents}")
 
     return text_sumary
 
@@ -183,6 +228,9 @@ def main():
     # --------------------------------
     # Bước 2: Tìm kiếm mục lục sách và thực hiện OCR
     # 2.1. Tìm kiếm mục lục sách - Lấy 20% số trang tính từ bắt đầu thực hiện tìm kiếm
+    # time Step 2:40-50s
+    # OCR Nội dung sách
+    # time Step 2:200-260s
     return
 
 
