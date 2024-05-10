@@ -6,11 +6,14 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 from pdf2image import convert_from_path
 from config import config
+from src.extract_menu.assign_levels import assign_levels
 from src.ocr.helpers import convert_contours_to_bounding_boxes
 from src.ocr.ocr_image import detect_line_word, crop_box, detect_text_area
 from src.ocr.pdf_to_img import pdf_to_image_np
 
 import pytesseract
+
+from src.step3_chapter_division.chapter_division import split_content_by_toc
 
 
 def load_model():
@@ -50,11 +53,10 @@ def determine_summary_size(
 def is_table_of_contents(text, chapter_lv1):
     # Chuyển đổi văn bản thành chữ thường
     text = text.lower()
-    number_markers = ['1.', '2.', '3.', '4.',
-                      '5.', '6.', '7.', '8.', '9.', '10.']
+    number_markers = ["1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9.", "10."]
 
     # Tách các dòng văn bản thành từng dòng riêng biệt
-    lines = text.split('\n')
+    lines = text.split("\n")
 
     # Kiểm tra xem có ít nhất một dòng bắt đầu bằng số hoặc từ khóa
     for line in lines:
@@ -64,7 +66,7 @@ def is_table_of_contents(text, chapter_lv1):
     # Kiểm tra xem có ít nhất một dòng chứa các tiêu đề có độ sâu lồng nhau không
     for i in range(len(lines)):
         if lines[i].strip().startswith(chapter_lv1):
-            for j in range(i+1, min(i+4, len(lines))):
+            for j in range(i + 1, min(i + 4, len(lines))):
                 if lines[j].strip().startswith(tuple(number_markers)):
                     return True
     return False
@@ -78,7 +80,7 @@ def clear_text(text):
             ),
             re.escape(
                 "ỸÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴĐ"
-            )
+            ),
         )
     )
     text = SAVE_KEY_REGEX_PATTERN.sub(" ", text)
@@ -88,18 +90,46 @@ def clear_text(text):
     text = re.sub(r" \.", ".", text)
     text = text.rstrip()
     return text
+
+
 # Tìm kiếm menu của sách
 
 
 def extract_table_of_contents(list_page):
     # Các từ khóa tiêu đề và số - cho ra config
-    title_keywords = ['chương', 'phần', "chapter", "hồi"]
-    number_chapter = ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.',
-                      '10.', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
+    title_keywords = ["chương", "phần", "chapter", "hồi"]
+    number_chapter = [
+        "1.",
+        "2.",
+        "3.",
+        "4.",
+        "5.",
+        "6.",
+        "7.",
+        "8.",
+        "9.",
+        "10.",
+        "I",
+        "II",
+        "III",
+        "IV",
+        "V",
+        "VI",
+        "VII",
+        "VIII",
+        "IX",
+        "X",
+    ]
 
     # Kết hợp danh sách title_keywords và number_chapter
-    chapter_lv1 = tuple(number_chapter + ['{} {}'.format(
-        keyword, num) for keyword in title_keywords for num in range(1, 11)])
+    chapter_lv1 = tuple(
+        number_chapter
+        + [
+            "{} {}".format(keyword, num)
+            for keyword in title_keywords
+            for num in range(1, 11)
+        ]
+    )
 
     last_toc_page = None
     table_of_contents = []
@@ -115,11 +145,11 @@ def extract_table_of_contents(list_page):
             if len(text_line) != 0:
                 text_line = clear_text(text_line)
                 text_line = text_line.rstrip(".")
-                
+
                 if is_table_of_contents(text_line, chapter_lv1):
                     is_menu += 1
                 page_content.append(text_line)
-        print(f"lines_rects - is_menu\n{len(lines_rects)}-{is_menu}")
+        # print(f"lines_rects - is_menu\n{len(lines_rects)}-{is_menu}")
         if is_menu == 0 or is_menu < (len(lines_rects) - 10):
             continue
         else:
@@ -173,20 +203,26 @@ def sumary_book(book_link, size_sumary, is_page=True):
     text_sumary = "Nội dung tóm tắt"
 
     print("Step 1")
-    # start = time.time()
+    start_1 = time.time()
     pages_np = pdf_to_image_np(book_link)
     len_pages = len(pages_np)
-    words_to_summarize = determine_summary_size(
-        len_pages, size_sumary, is_page)
-    # end = time.time()
+    words_to_summarize = determine_summary_size(len_pages, size_sumary, is_page)
+    end_1 = time.time()
+    print(f"time Step 1:{(end_1-start_1):.03f}s")
+    
     print("Step 2")
-    numbers_page_use_check_menu = round(len_pages * 0.2)
+    # numbers_page_use_check_menu = round(len_pages * 0.2)
+    numbers_page_use_check_menu = 10
     print("numbers_page_use_check_menu", numbers_page_use_check_menu)
+
     start = time.time()
+
     list_page_check_menu = pages_np[:numbers_page_use_check_menu]
 
-    last_toc_page, table_of_contents = extract_table_of_contents(
-        list_page_check_menu)
+    last_toc_page, table_of_contents = extract_table_of_contents(list_page_check_menu)
+
+    table_of_contents = assign_levels(table_of_contents)
+
     pages_np_content = pages_np[last_toc_page:]
 
     # OCR nội dung sách
@@ -196,19 +232,9 @@ def sumary_book(book_link, size_sumary, is_page=True):
 
     print(f"time Step 2:{(end-start):.03f}s")
     print(f"words_to_summarize:{words_to_summarize}")
-
-    # with open("./datasets/data_text/book/content.txt", "w", encoding="utf-8") as file:
-    #     file.write(content_book)
-
-    text_table_of_contents = ""
-    for text_line in table_of_contents:
-        text_table_of_contents += text_line + "\n"
-
-    with open("./datasets/data_text/book/table_of_contents.txt", "w", encoding="utf-8") as file:
-        file.write(text_table_of_contents)
-    # print(f"last_toc_page:{last_toc_page}")
-    # print(f"table_of_contents:{table_of_contents}")
-
+    chapter_content = split_content_by_toc(content_book, table_of_contents)
+    # for chapter_content_item in chapter_content:
+        
     return text_sumary
 
 
@@ -232,6 +258,18 @@ def main():
     # time Step 2:40-50s
     # OCR Nội dung sách
     # time Step 2:200-260s
+    # Bước 3: Chia trang sách thành các chương:
+    # + Đầu vào:
+    #   > Mục lục sách: Thông tin về mục lục của sách.
+    #   > Nội dung sách: Nội dung text OCR
+    # + Đầu ra:
+    #   `Mảng các chương sách`: Trang bắt đầu đến kết thúc của mỗi chương (image numpy).
+    # + Thực hiện:
+    #   > Dựa vào thông tin từ mục lục, chia trang sách thành các chương tương ứng.
+    # + Công nghệ:
+    #   > `Xử lý dữ liệu và chuỗi`: Python.
+    #   > Có thể sử dụng kỹ thuật phân đoạn văn bản để tách các chương.
+    
     return
 
 
