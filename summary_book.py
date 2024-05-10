@@ -14,6 +14,7 @@ from src.ocr.pdf_to_img import pdf_to_image_np
 import pytesseract
 
 from src.step3_chapter_division.chapter_division import split_content_by_toc
+from src.text_rank.text_rank import summarize_text
 
 
 def load_model():
@@ -209,13 +210,13 @@ def sumary_book(book_link, size_sumary, is_page=True):
     words_to_summarize = determine_summary_size(len_pages, size_sumary, is_page)
     end_1 = time.time()
     print(f"time Step 1:{(end_1-start_1):.03f}s")
-    
+
     print("Step 2")
     # numbers_page_use_check_menu = round(len_pages * 0.2)
     numbers_page_use_check_menu = 10
     print("numbers_page_use_check_menu", numbers_page_use_check_menu)
 
-    start = time.time()
+    start_2 = time.time()
 
     list_page_check_menu = pages_np[:numbers_page_use_check_menu]
 
@@ -228,13 +229,23 @@ def sumary_book(book_link, size_sumary, is_page=True):
     # OCR nội dung sách
     print("OCR nội dung sách.")
     content_book = ocr_content(pages_np_content)
-    end = time.time()
+    end_2 = time.time()
 
-    print(f"time Step 2:{(end-start):.03f}s")
+    print(f"time Step 2:{(end_2-start_2):.03f}s")
     print(f"words_to_summarize:{words_to_summarize}")
+    start_3 = time.time()
     chapter_content = split_content_by_toc(content_book, table_of_contents)
-    # for chapter_content_item in chapter_content:
-        
+    summarize_all = ""
+    for i, chapter_content_item in enumerate(chapter_content):
+        percent = 20
+        chapter_summarize = summarize_text(chapter_content_item, percent)
+        # summarize_all.append(chapter_summarize)
+        summarize_all += "Chapter " + str(i) + ": " + chapter_summarize + "\n"
+    end_3 = time.time()
+    print(f"time Step 3:{(end_3-start_3):.03f}s")
+
+    with open("noidung_tomtat.txt", "w", encoding="utf-8") as file:
+        file.write(summarize_all)
     return text_sumary
 
 
@@ -269,7 +280,7 @@ def main():
     # + Công nghệ:
     #   > `Xử lý dữ liệu và chuỗi`: Python.
     #   > Có thể sử dụng kỹ thuật phân đoạn văn bản để tách các chương.
-    
+
     return
 
 

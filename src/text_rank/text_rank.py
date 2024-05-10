@@ -1,9 +1,11 @@
-from preprocessing import process_text, process_after
+# from preprocessing import process_text, process_after
 # from preprocessing import processed_text
 import numpy as np
 from nltk.cluster.util import cosine_distance
 from operator import itemgetter
 import time
+
+from src.text_rank.preprocessing import process_text
 
 def pagerank(A, eps=0.0001, d=0.85, max_iter=1000):
     P = np.ones(len(A)) / len(A)
