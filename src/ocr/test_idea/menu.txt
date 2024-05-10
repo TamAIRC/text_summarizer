@@ -1,0 +1,45 @@
+
+1. Mục đích và phạm vi áp dụng kiến trúc Chính phủ điện tử TTXVN..  
+1.1. — Giới thiệu chung về Khung kiến trúc Chính phủ điện tử:  
+1.2. — Sự cần thiết xây dựng Kiến trúc Chính phủ điện tử tại Thông tấn xã Việt Nam:. 
+1.3. Mục đích và phạm vi áp dụng....  
+2.  Hiện trạng hệ thống Công nghệ thông tỉn và Chính phủ điện tử tại Thông tấn xã Việt Nam:  
+2.1. Hiện trạng triển khai ứng dụng CNTT tại Thông tấn xã Việt Nam: 
+2.2. Các hệ thống ứng dụng CNTT của TTXVN..  
+2.2.1. Hệ thống tác nghiệp phục vụ sản xuất thông tin... 
+2.2.2. Các ứng dụng của Hệ thống kỹ thuật sản xuất tin truyền hình.. 
+2.2.3. Hệ thống phục vụ quản lý hành chính nhà nước  
+2.2.4. Trung tâm dữ liệu ..  
+2.2.5. Hệ thống đảm bảo an toàn thông tin.. 
+2.3. Hiện trạng triển khai CPĐT tại TTXVN....  
+2.3.1. Khung kiến trúc CPĐT Việt Nam...  
+
+3. Định hướng Kiến trúc Chính phủ điện tử Thông tấn xã Việt Nam... 
+3.1. Chức năng, nhiệm vụ của TTXVN..  
+3.2.  — Cơ cấu tổ chức TTXVN...  
+3.3. Tầm nhìn, định hướng phát triển Chính phủ điện tử TTXVN..  
+4. Các nguyên tắc xây dựng kiến trúc Chính phủ điện tử TTXVN: 
+5,  Kiến trúc Chính phủ điện tử Thông tấn xã Việt Nam...  
+5.1. — Sơ đồ tổng thể Kiến trúc Chính phủ điện tử TTXVN..  
+5.2. Người sử dụng  
+5.3. Kênh truy cập  
+5.4. Dịch vụ cổng thông tin điện tử... 
+5.5, Dịch vụ công trực tuyến (Dịch vụ thông tin). 
+5.6. — Ứng dụng và cơ sở dữ liệu . 
+5.7. Các dịch vụ chia sẻ và tích hợp.. 
+5.7.1. Nền tảng tích hợp dịch vụ CPĐT (LGSP)..  
+5.7.2. Nền tảng dịch vụ dùng chung 
+5.7.3. Nền tảng tích hợp ứng dụng . 
+5.7.4. Cúc dịch vụ tích hợp và liên thông dữ liệu  
+5.8. Các nguyên tắc, yêu cầu trong việc triển khai các thành phần trong Kiến trúc CPĐT TTXVN. 
+5.8.1. Nguyên tắc... 
+5.8.2. Yêu cầu về nghiệp vụ 
+5.8.3. Yêu cầu về kỹ thuật 
+6. Lộ trình/kế hoạch/nguồn kinh phí triển khai các thành phần trong kiến trúc. 
+6.1. Lộ trình triển khai kiến trúc Chính phủ điện tử TTXVN.....  
+6.2. — Kế hoạch triển khai  
+6.3. Kinh phí thực hiện ..  
+7. Tổ chức triển khai Kiến trúc Chính phủ điện tử TTXVN:  
+7.1. Công tác chỉ đạo triển khai kiến trúc CPĐT TTXVN....  
+7.2. Công tác quản lý, giám sát, duy trì Kiến trúc CPĐT TTXVN.. 
+
