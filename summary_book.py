@@ -72,7 +72,7 @@ def is_table_of_contents(text, chapter_lv1):
 
 def clear_text(text):
     SAVE_KEY_REGEX_PATTERN = re.compile(
-        r"[^a-zA-Z0-9\s\t\.\,{}{}()\-/]".format(
+        r"[^a-zA-Z0-9\s\t\.\,{}()\-/{}]".format(
             re.escape(
                 "ỹáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ"
             ),
@@ -82,10 +82,9 @@ def clear_text(text):
         )
     )
     text = SAVE_KEY_REGEX_PATTERN.sub(" ", text)
-    text = re.sub(r"\t", " ", text)
-    text = re.sub(r"\n", " ", text)
+    text = re.sub(r"\t|\n", " ", text)
     text = re.sub(r"\.{2,}", "", text)
-    text = re.sub(r"  +", " ", text)
+    text = re.sub(r"\s{2,}", " ", text)
     text = re.sub(r" \.", ".", text)
     text = text.rstrip()
     return text
@@ -93,8 +92,8 @@ def clear_text(text):
 
 
 def extract_table_of_contents(list_page):
-    # Các từ khóa tiêu đề và số
-    title_keywords = ['chương', 'phần', "chapter"]
+    # Các từ khóa tiêu đề và số - cho ra config
+    title_keywords = ['chương', 'phần', "chapter", "hồi"]
     number_chapter = ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.',
                       '10.', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
 
@@ -115,6 +114,8 @@ def extract_table_of_contents(list_page):
 
             if len(text_line) != 0:
                 text_line = clear_text(text_line)
+                text_line = text_line.rstrip(".")
+                
                 if is_table_of_contents(text_line, chapter_lv1):
                     is_menu += 1
                 page_content.append(text_line)
@@ -190,7 +191,7 @@ def sumary_book(book_link, size_sumary, is_page=True):
 
     # OCR nội dung sách
     print("OCR nội dung sách.")
-    # content_book = ocr_content(pages_np_content)
+    content_book = ocr_content(pages_np_content)
     end = time.time()
 
     print(f"time Step 2:{(end-start):.03f}s")
