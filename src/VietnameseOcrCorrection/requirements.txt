@@ -1,0 +1,7 @@
+torch==2.2.0
+numpy
+lmdb
+tqdm
+unicodedata2
+nltk
+jupyter-notebook
