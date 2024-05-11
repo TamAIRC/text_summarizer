@@ -39,3 +39,8 @@ or
 ```
 python text_rank.py
 ```
+
+
+## Sửa các đường dẫn sau để sử dụng text_rank.py
+- sửa sys.path text_rank/preprocessing
+- sửa sys.pth VietnameseOcrCorrection/predictor

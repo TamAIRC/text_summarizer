@@ -1,5 +1,8 @@
+import sys
+sys.path.append('C:/Users/Admin/Desktop/text_summarizer/src/')
+
+from VietnameseOcrCorrection.tool.predictor import Predictor
 from pyvi import ViTokenizer
-# from load_data import data
 
 def remove_extra_spaces(text):
     return ' '.join(text.split())
@@ -13,7 +16,9 @@ def replace_punctuation(text):
 import re
 def keep_vietnamese_letters_and_numbers(text):
     return re.sub(r'[^\w\s.]', '', text)
-
+def remove_single_characters(text):
+    # Tìm và xoá các từ chỉ có một ký tự
+    return re.sub(r'\b\w\b', '', text)
 def get_list_of_sentences(doc):
     sentences = []
     sens = doc.split('.')
@@ -40,6 +45,7 @@ def remove_stop_words(text, stop_words):
 def process_text(doc):
     doc = remove_extra_spaces(doc)
     doc = replace_punctuation(doc)
+    doc = remove_single_characters(doc)
     # doc = remove_stop_words(doc,stopwords)
     doc = keep_vietnamese_letters_and_numbers(doc)
     sentences = get_list_of_sentences(doc)
@@ -51,6 +57,11 @@ def process_after(sentence_list):
         processed_sentence = ' '.join([word for word in sentence]) + '.'
         processed_text.append(processed_sentence)
     return ' '.join(processed_text)
+
+def correct(text):
+    model_predictor = Predictor(device='cpu', model_type='seq2seq', weight_path='../VietnameseOcrCorrection/weights/seq2seq_0.pth')
+    outs = model_predictor.predict(text.strip(), NGRAM=6)
+    return outs
 ###############################
 # stopwords = load_stop_words("./data/vietnamese-stopwords.txt")
 # processed_text = [] 
