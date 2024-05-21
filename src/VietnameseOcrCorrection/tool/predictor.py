@@ -1,26 +1,51 @@
-import sys
-sys.path.append('C:/Users/Admin/Desktop/text_summarizer/src/VietnameseOcrCorrection')
-
-from model.seq2seq import Seq2Seq
-from model.transformer import LanguageTransformer
 import torch
-from tool.translate import translate
-from model.vocab import Vocab
-from config import alphabet
 import numpy as np
 import re
 from collections import defaultdict
-from tool.utils import get_bucket
+
+
+try:
+    from model.seq2seq import Seq2Seq
+    from model.transformer import LanguageTransformer
+    from model.vocab import Vocab
+    from tool.utils import get_bucket
+    from tool.translate import translate
+    from config import alphabet
+    from VietnameseOcrCorrection.config import LINK_MODEL_SEQ2SEQ
+except ImportError:
+    from src.VietnameseOcrCorrection.model.seq2seq import Seq2Seq
+    from src.VietnameseOcrCorrection.model.transformer import LanguageTransformer
+    from src.VietnameseOcrCorrection.model.vocab import Vocab
+    from src.VietnameseOcrCorrection.tool.utils import get_bucket
+    from src.VietnameseOcrCorrection.tool.translate import translate
+    from src.VietnameseOcrCorrection.config import alphabet, LINK_MODEL_SEQ2SEQ
 
 
 class Predictor(object):
-    def __init__(self, device, model_type='seq2seq', weight_path='C:/Users/Admin/Desktop/text_summarizer/src/VietnameseOcrCorrection/weights/seq2seq_0.pth'):
-        if model_type == 'seq2seq':
+    def __init__(
+        self,
+        device,
+        model_type="seq2seq",
+        weight_path=LINK_MODEL_SEQ2SEQ,
+    ):
+        if model_type == "seq2seq":
             self.model = Seq2Seq(len(alphabet), encoder_hidden=256, decoder_hidden=256)
-        elif model_type == 'transformer':
-            self.model = LanguageTransformer(len(alphabet), d_model=256, nhead=4, num_encoder_layers=4, num_decoder_layers=4, dim_feedforward=768, max_seq_length=256, pos_dropout=0.1, trans_dropout=0.1)
+        elif model_type == "transformer":
+            self.model = LanguageTransformer(
+                len(alphabet),
+                d_model=256,
+                nhead=4,
+                num_encoder_layers=4,
+                num_decoder_layers=4,
+                dim_feedforward=768,
+                max_seq_length=256,
+                pos_dropout=0.1,
+                trans_dropout=0.1,
+            )
         self.device = device
-        self.model.load_state_dict(torch.load(weight_path, map_location=device), strict=False)
+        self.model.load_state_dict(
+            torch.load(weight_path, map_location=device), strict=False
+        )
         self.model = self.model.to(device)
         self.vocab = Vocab(alphabet)
 
@@ -28,7 +53,8 @@ class Predictor(object):
         if isinstance(text, str):
             text = self.vocab.encode(text)
             text = np.expand_dims(text, axis=0)
-            return torch.LongTensor(text)
+            # return torch.LongTensor(text)
+            return torch.LongTensor(text).to(self.device)
         elif isinstance(text, list):
             src_text = []
             MAXLEN = max(len(txt) for txt in text) + 2
@@ -39,11 +65,18 @@ class Predictor(object):
                 src = np.concatenate((txt, np.zeros(MAXLEN - text_len, dtype=np.int32)))
                 src_text.append(src)
 
-        return torch.LongTensor(src_text).to(self.device)
+            # Convert the list of numpy arrays to a single numpy array
+            src_text_array = np.array(src_text)
+
+            # Ensure that the numpy array is not empty before converting to tensor
+            if src_text_array.size > 0:
+                return torch.LongTensor(src_text_array).to(self.device)
+        # return torch.LongTensor(src_text).to(self.device)
+        return torch.LongTensor([]).to(self.device)
 
     def extract_phrase(self, paragraph):
         # extract phrase
-        return re.findall(r'\w[\w ]*|\s\W+|\W+', paragraph)
+        return re.findall(r"\w[\w ]*|\s\W+|\W+", paragraph)
 
     def process(self, paragraph, NGRAM):
         phrases = self.extract_phrase(paragraph)
@@ -59,10 +92,10 @@ class Predictor(object):
                 masks.append(False)
             else:
                 for i in range(0, len(words), NGRAM):
-                    inputs.append(' '.join(words[i:i + NGRAM]))
+                    inputs.append(" ".join(words[i : i + NGRAM]))
                     masks.append(True)
                     if len(words) - i - NGRAM < NGRAM:
-                        inputs[-1] += ' ' + ' '.join(words[i + NGRAM:])
+                        inputs[-1] += " " + " ".join(words[i + NGRAM :])
                         inputs[-1] = inputs[-1].strip()
                         break
 
@@ -110,12 +143,12 @@ class Predictor(object):
                     cnt += 1
                 else:
                     for i in range(0, len(words), NGRAM):
-                        inputs.append(' '.join(words[i:i + NGRAM]))
+                        inputs.append(" ".join(words[i : i + NGRAM]))
                         masks.append(True)
                         cnt += 1
 
                         if len(words) - i - NGRAM < NGRAM:
-                            inputs[-1] += ' ' + ' '.join(words[i + NGRAM:])
+                            inputs[-1] += " " + " ".join(words[i + NGRAM :])
                             inputs[-1] = inputs[-1].strip()
                             break
 
@@ -139,7 +172,7 @@ class Predictor(object):
                 outputs.extend(model_output)
             else:
                 for i in range(0, len(batch_texts), batch_size):
-                    model_input = self.preprocess(batch_texts[i:i + batch_size])
+                    model_input = self.preprocess(batch_texts[i : i + batch_size])
                     model_output = self._predict(model_input)
                     outputs.extend(model_output)
 
@@ -147,7 +180,7 @@ class Predictor(object):
         z = zip(outputs, indices)
         outputs = sorted(z, key=lambda x: x[1])
         outputs, _ = zip(*outputs)
-        print('-----------------')
+        print("-----------------")
         print(outputs)
 
         # group n-grams -> final paragraphs

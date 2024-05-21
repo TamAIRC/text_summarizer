@@ -1,46 +1,64 @@
-import sys
-sys.path.append('C:/Users/Admin/Desktop/text_summarizer/src/')
+from underthesea import word_tokenize
 
-from VietnameseOcrCorrection.tool.predictor import Predictor
-from pyvi import ViTokenizer
+try:
+    from VietnameseOcrCorrection.tool.predictor import Predictor
+    from VietnameseOcrCorrection.config import LINK_MODEL_SEQ2SEQ
+except ImportError:
+    from src.VietnameseOcrCorrection.config import LINK_MODEL_SEQ2SEQ
+    from src.VietnameseOcrCorrection.tool.predictor import Predictor
+
+
 
 def remove_extra_spaces(text):
-    return ' '.join(text.split())
+    return " ".join(text.split())
 
 
 def replace_punctuation(text):
-    text_with_periods = text.replace(';', '.').replace('!', '.').replace(':', '.').replace('@', '.').replace('_', ' ')
+    text_with_periods = (
+        text.replace(";", ".")
+        .replace("!", ".")
+        .replace(":", ".")
+        .replace("@", ".")
+        .replace("_", " ")
+    )
     return text_with_periods
 
 
 import re
+
+
 def keep_vietnamese_letters_and_numbers(text):
-    return re.sub(r'[^\w\s.]', '', text)
+    return re.sub(r"[^\w\s.]", "", text)
+
+
 def remove_single_characters(text):
     # Tìm và xoá các từ chỉ có một ký tự
-    return re.sub(r'\b\w\b', '', text)
+    return re.sub(r"\b\w\b", "", text)
+
+
 def get_list_of_sentences(doc):
     sentences = []
-    sens = doc.split('.')
+    sens = doc.split(".")
     for sen in sens:
         if len(sen) > 35:
-            # sen = gensim.utils.simple_preprocess(sen)
-            # sen = ' '.join(sen)
-            sen = ViTokenizer.tokenize(sen)
+            sen = word_tokenize(sen, format="text")
             sen = sen.lower()  # Chuyển đổi sang lowercase
-            sen = sen.split(' ')
+            sen = sen.split(" ")
             sentences.append(sen)
     return sentences
 
+
 def load_stop_words(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         stop_words = [word.strip() for word in file.readlines()]
     return stop_words
+
 
 def remove_stop_words(text, stop_words):
     words = text.split()
     filtered_words = [word for word in words if word.lower() not in stop_words]
-    return ' '.join(filtered_words)
+    return " ".join(filtered_words)
+
 
 def process_text(doc):
     doc = remove_extra_spaces(doc)
@@ -51,26 +69,32 @@ def process_text(doc):
     sentences = get_list_of_sentences(doc)
     return sentences
 
+
 def process_after(sentence_list):
     processed_text = []
     for sentence in sentence_list:
-        processed_sentence = ' '.join([word for word in sentence]) + '.'
+        processed_sentence = " ".join([word for word in sentence]) + "."
         processed_text.append(processed_sentence)
-    return ' '.join(processed_text)
+    return " ".join(processed_text)
+
 
 def correct(text):
-    model_predictor = Predictor(device='cpu', model_type='seq2seq', weight_path='../VietnameseOcrCorrection/weights/seq2seq_0.pth')
+    model_predictor = Predictor(
+        device="cpu",
+        model_type="seq2seq",
+        weight_path=LINK_MODEL_SEQ2SEQ,
+    )
     outs = model_predictor.predict(text.strip(), NGRAM=6)
     return outs
+
+
 ###############################
 # stopwords = load_stop_words("./data/vietnamese-stopwords.txt")
-# processed_text = [] 
+# processed_text = []
 # for entry in data:
-#     text = entry['text']  
-#     processed_entry = process_text(text) 
-#     processed_text.append(processed_entry) 
-
-
+#     text = entry['text']
+#     processed_entry = process_text(text)
+#     processed_text.append(processed_entry)
 
 
 # print(processed_text)
@@ -89,4 +113,3 @@ def correct(text):
 #     for sentence in entry:
 #         print(sentence)
 #     print(entry)
-

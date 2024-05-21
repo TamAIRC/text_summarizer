@@ -1,9 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from model.decoder import AttnDecoderRNN
-from model.encoder import Encoder
 
+try:
+    from model.decoder import AttnDecoderRNN
+    from model.encoder import Encoder
+except ImportError:
+    from src.VietnameseOcrCorrection.model.decoder import AttnDecoderRNN
+    from src.VietnameseOcrCorrection.model.encoder import Encoder
+    
 class Seq2Seq(nn.Module):
     def __init__(self, vocab_size, encoder_hidden, decoder_hidden, dropout=0.1):
         super().__init__()

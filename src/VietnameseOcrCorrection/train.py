@@ -1,65 +1,97 @@
 import numpy as np
 import os
 import torch
-from dataloader.dataset import BasicDataset, Collator, ClusterRandomSampler
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import OneCycleLR
-from config import alphabet
-from optim.loss import LabelSmoothingLoss
-from model.seq2seq import Seq2Seq
-from model.transformer import LanguageTransformer
 from torch.utils.data import DataLoader
-from tool.utils import batch_to_device, compute_accuracy
-from tool.translate import translate
 import time
-from tool.logger import Logger
-from model.vocab import Vocab
 from tqdm import tqdm
+
+try:
+    from config import alphabet
+    from VietnameseOcrCorrection.config import LINK_MODEL_SEQ2SEQ, LINK_TRANSFORMER
+    from dataloader.dataset import BasicDataset, Collator, ClusterRandomSampler
+    from optim.loss import LabelSmoothingLoss
+    from model.seq2seq import Seq2Seq
+    from model.transformer import LanguageTransformer
+    from tool.utils import batch_to_device, compute_accuracy
+    from tool.translate import translate
+    from tool.logger import Logger
+    from model.vocab import Vocab
+except ImportError:
+    from src.VietnameseOcrCorrection.config import alphabet
+    from src.VietnameseOcrCorrection.config import LINK_MODEL_SEQ2SEQ, LINK_TRANSFORMER
+    from src.VietnameseOcrCorrection.dataloader.dataset import (
+        BasicDataset,
+        Collator,
+        ClusterRandomSampler,
+    )
+    from src.VietnameseOcrCorrection.optim.loss import LabelSmoothingLoss
+    from src.VietnameseOcrCorrection.model.seq2seq import Seq2Seq
+    from src.VietnameseOcrCorrection.model.transformer import LanguageTransformer
+    from src.VietnameseOcrCorrection.tool.utils import batch_to_device, compute_accuracy
+    from src.VietnameseOcrCorrection.tool.translate import translate
+    from src.VietnameseOcrCorrection.tool.logger import Logger
+    from src.VietnameseOcrCorrection.model.vocab import Vocab
 
 
 class Trainer(object):
-    def __init__(self, model_type='seq2seq'):
+    def __init__(self, model_type="seq2seq"):
         self.batch_size = 768
         self.num_iters = 1000000
         self.valid_every = 6000
         self.print_every = 200
         self.lr = 0.0001
-        self.logger = Logger('./' + model_type + '.log')
+        self.logger = Logger("./" + model_type + ".log")
         self.model_type = model_type
 
         # create vocab model
         self.vocab = Vocab(alphabet)
 
         # create model
-        if self.model_type == 'seq2seq':
-            weight_path='./weights/seq2seq_0.pth'
-            self.device = ("cuda:1" if torch.cuda.is_available() else "cpu")
+        if self.model_type == "seq2seq":
+            weight_path = LINK_MODEL_SEQ2SEQ
+            self.device = "cuda:1" if torch.cuda.is_available() else "cpu"
             self.criterion = LabelSmoothingLoss(len(alphabet), 0).cuda(1)
             self.model = Seq2Seq(len(alphabet), encoder_hidden=256, decoder_hidden=256)
-        elif self.model_type == 'transformer':
-            weight_path='./weights/transformer_0.pth'
-            self.device = ("cuda:1" if torch.cuda.is_available() else "cpu")
+        elif self.model_type == "transformer":
+            weight_path = LINK_TRANSFORMER
+            self.device = "cuda:1" if torch.cuda.is_available() else "cpu"
             self.criterion = LabelSmoothingLoss(len(alphabet), 0).cuda(1)
-            self.model = LanguageTransformer(len(alphabet), d_model=210, nhead=6, num_encoder_layers=4, num_decoder_layers=4, dim_feedforward=768, max_seq_length=256, pos_dropout=0.1, trans_dropout=0.1)
+            self.model = LanguageTransformer(
+                len(alphabet),
+                d_model=210,
+                nhead=6,
+                num_encoder_layers=4,
+                num_decoder_layers=4,
+                dim_feedforward=768,
+                max_seq_length=256,
+                pos_dropout=0.1,
+                trans_dropout=0.1,
+            )
 
         self.model = self.model.to(device=self.device)
         self.weight_path = weight_path
 
-#         load pretrain weights
+        #         load pretrain weights
         if os.path.exists(weight_path):
-            print('Load weight from: ', weight_path)
+            print("Load weight from: ", weight_path)
             self.load_weights(weight_path)
 
         # create optimizer
-        self.optimizer = AdamW(self.model.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-09)
-        self.scheduler = OneCycleLR(self.optimizer, max_lr=self.lr, total_steps=self.num_iters, pct_start=0.1)
+        self.optimizer = AdamW(
+            self.model.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-09
+        )
+        self.scheduler = OneCycleLR(
+            self.optimizer, max_lr=self.lr, total_steps=self.num_iters, pct_start=0.1
+        )
 
         # create dataset
-        self.train_dataset = BasicDataset('./train_lmdb')
-        self.val_dataset = BasicDataset('./val_lmdb')
+        self.train_dataset = BasicDataset("./train_lmdb")
+        self.val_dataset = BasicDataset("./val_lmdb")
 
-        print('The number of train data: ', len(self.train_dataset))
-        print('The number of val data: ', len(self.val_dataset))
+        print("The number of train data: ", len(self.train_dataset))
+        print("The number of val data: ", len(self.val_dataset))
 
         # create dataloader
         self.train_loader = self.create_dataloader(self.train_dataset, True)
@@ -70,7 +102,15 @@ class Trainer(object):
     def create_dataloader(self, dataset, shuffle):
         # create train and val dataloader
         sampler = ClusterRandomSampler(dataset, self.batch_size, shuffle)
-        data_loader = DataLoader(dataset, batch_size=self.batch_size, sampler=sampler, collate_fn=Collator(), shuffle=False, num_workers=8, pin_memory=True)
+        data_loader = DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            sampler=sampler,
+            collate_fn=Collator(),
+            shuffle=False,
+            num_workers=8,
+            pin_memory=True,
+        )
 
         return data_loader
 
@@ -81,7 +121,9 @@ class Trainer(object):
         shuffle_idx = None
         total_time = 0
         data_iter = iter(self.train_loader)
-        best_fold_acc = [0] * (len(self.val_loader) // (self.sample // self.batch_size) + 1)
+        best_fold_acc = [0] * (
+            len(self.val_loader) // (self.sample // self.batch_size) + 1
+        )
 
         for _ in range(self.num_iters):
             self.model.train()
@@ -98,7 +140,9 @@ class Trainer(object):
             total_loss += loss
 
             if global_step % self.print_every == 0:
-                info = 'step: {:06d}, train_loss: {:.4f}, gpu_time: {}'.format(global_step, total_loss / self.print_every, total_time)
+                info = "step: {:06d}, train_loss: {:.4f}, gpu_time: {}".format(
+                    global_step, total_loss / self.print_every, total_time
+                )
                 print(info)
                 self.logger.log(info)
                 total_loss = 0
@@ -120,11 +164,19 @@ class Trainer(object):
                         self.save_weights(self.weight_path, selected_fold)
                         best_acc = acc_full_seq
 
-                print("==============================================================================")
-                info = "val_loss: {:.4f}, full_seq_acc: {:.4f}, word_acc: {:.4f}".format(val_loss, acc_full_seq, acc_per_char)
+                print(
+                    "=============================================================================="
+                )
+                info = (
+                    "val_loss: {:.4f}, full_seq_acc: {:.4f}, word_acc: {:.4f}".format(
+                        val_loss, acc_full_seq, acc_per_char
+                    )
+                )
                 print(info)
                 self.logger.log(info)
-                print("==============================================================================")
+                print(
+                    "=============================================================================="
+                )
 
     def validate(self, fold_id):
         self.model.eval()
@@ -139,7 +191,11 @@ class Trainer(object):
 
         valdata_iter = iter(self.val_loader)
         with torch.no_grad():
-            pbar = tqdm(range(len(self.val_loader)), ncols = 100, desc='Computing loss on {}th fold data..'.format(fold_id))
+            pbar = tqdm(
+                range(len(self.val_loader)),
+                ncols=100,
+                desc="Computing loss on {}th fold data..".format(fold_id),
+            )
             for step in pbar:
                 try:
                     batch = next(valdata_iter)
@@ -154,11 +210,15 @@ class Trainer(object):
                         break
 
                 texts, tgt_input, tgt_output, tgt_padding_mask = batch
-                texts, tgt_input, tgt_output, tgt_padding_mask = batch_to_device(texts, tgt_input, tgt_output, tgt_padding_mask, self.device)
-                if self.model_type == 'seq2seq':
+                texts, tgt_input, tgt_output, tgt_padding_mask = batch_to_device(
+                    texts, tgt_input, tgt_output, tgt_padding_mask, self.device
+                )
+                if self.model_type == "seq2seq":
                     outputs = self.model(texts, tgt_input)
                 else:
-                    outputs = self.model(texts, tgt_input, tgt_key_padding_mask=tgt_padding_mask)
+                    outputs = self.model(
+                        texts, tgt_input, tgt_key_padding_mask=tgt_padding_mask
+                    )
 
                 outputs = outputs.flatten(0, 1)
                 tgt_output = tgt_output.flatten()
@@ -185,7 +245,11 @@ class Trainer(object):
 
         valdata_iter = iter(self.val_loader)
         with torch.no_grad():
-            pbar = tqdm(range(len(self.val_loader)), ncols = 100, desc='Computing accuracy on {}th fold data..'.format(fold_id))
+            pbar = tqdm(
+                range(len(self.val_loader)),
+                ncols=100,
+                desc="Computing accuracy on {}th fold data..".format(fold_id),
+            )
             for step in pbar:
                 try:
                     batch = next(valdata_iter)
@@ -200,15 +264,17 @@ class Trainer(object):
                         break
 
                 texts, tgt_input, tgt_output, tgt_padding_mask = batch
-                texts, tgt_input, tgt_output, tgt_padding_mask = batch_to_device(texts, tgt_input, tgt_output, tgt_padding_mask, self.device)
+                texts, tgt_input, tgt_output, tgt_padding_mask = batch_to_device(
+                    texts, tgt_input, tgt_output, tgt_padding_mask, self.device
+                )
                 actual_sent = self.vocab.batch_decode(tgt_output.tolist())
                 translated_sentence = translate(texts, self.model, self.device)
                 pred_sent = self.vocab.batch_decode(translated_sentence.tolist())
                 pred_sents.extend(pred_sent)
                 actual_sents.extend(actual_sent)
 
-        acc_full_seq = compute_accuracy(actual_sents, pred_sents, mode='full_sequence')
-        acc_per_char = compute_accuracy(actual_sents, pred_sents, mode='word')
+        acc_full_seq = compute_accuracy(actual_sents, pred_sents, mode="full_sequence")
+        acc_per_char = compute_accuracy(actual_sents, pred_sents, mode="word")
 
         return acc_full_seq, acc_per_char
 
@@ -217,16 +283,20 @@ class Trainer(object):
 
         # get the inputs
         texts, tgt_input, tgt_output, tgt_padding_mask = batch
-        texts, tgt_input, tgt_output, tgt_padding_mask = batch_to_device(texts, tgt_input, tgt_output, tgt_padding_mask, self.device)
+        texts, tgt_input, tgt_output, tgt_padding_mask = batch_to_device(
+            texts, tgt_input, tgt_output, tgt_padding_mask, self.device
+        )
 
         # zero the parameter gradients
         self.optimizer.zero_grad()
 
         # forward + backward + optimize + scheduler
-        if self.model_type == 'seq2seq':
+        if self.model_type == "seq2seq":
             outputs = self.model(texts, tgt_input)
         else:
-            outputs = self.model(texts, tgt_input, tgt_key_padding_mask=tgt_padding_mask)
+            outputs = self.model(
+                texts, tgt_input, tgt_key_padding_mask=tgt_padding_mask
+            )
 
         outputs = outputs.flatten(0, 1)
         tgt_output = tgt_output.flatten()
@@ -244,10 +314,13 @@ class Trainer(object):
 
         for name, param in self.model.named_parameters():
             if name not in state_dict:
-                print('{} not found'.format(name))
+                print("{} not found".format(name))
             elif state_dict[name].shape != param.shape:
                 print(
-                    '{} missmatching shape, required {} but found {}'.format(name, param.shape, state_dict[name].shape))
+                    "{} missmatching shape, required {} but found {}".format(
+                        name, param.shape, state_dict[name].shape
+                    )
+                )
                 del state_dict[name]
 
         self.model.load_state_dict(state_dict, strict=False)
@@ -256,8 +329,12 @@ class Trainer(object):
         path, _ = os.path.split(filename)
         os.makedirs(path, exist_ok=True)
         if self.sample != len(self.val_loader):
-            torch.save(self.model.state_dict(), './weights/' + self.model_type + '_' + str(fold_id) + '.pth')
+            torch.save(
+                self.model.state_dict(),
+                "./weights/" + self.model_type + "_" + str(fold_id) + ".pth",
+            )
         else:
             torch.save(self.model.state_dict(), filename)
+
 
 Trainer().train()

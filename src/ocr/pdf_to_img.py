@@ -16,7 +16,7 @@ except ImportError:
         import config
 
 
-def pdf_to_images(pdf_path, output_folder):
+def pdf_to_images(pdf_path, output_folder=config.IMAGE_DATA_LINK):
     """
     Convert each page of a PDF file to an image and save them in the output folder.
 
@@ -30,7 +30,7 @@ def pdf_to_images(pdf_path, output_folder):
     Notes:
         - This function converts each page of the PDF file to a PNG image.
         - It creates a subfolder in the output folder with the name of the PDF file (without extension).
-        - It saves each image with the format "{pdf_name}_page_{page_number}.png" in the subfolder.
+        - It saves each image with the format "page_{page_number}.png" in the subfolder.
         - It uses pdf2image library to perform the conversion.
         - The function assumes that the poppler library path is specified in the config module.
     """
@@ -49,10 +49,9 @@ def pdf_to_images(pdf_path, output_folder):
         # Process each page
         for i, page in enumerate(pages):
             # Define the filename
-            filename = f"{pdf_name}_page_{i}.png"
+            filename = f"page_{i}.png"
             # Define the filepath
             filepath = os.path.join(pdf_to_img_fodler, filename)
-
             # Save the page as a PNG image
             page.save(filepath, "PNG")
 

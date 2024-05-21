@@ -51,3 +51,28 @@ Thiết kế mô hình hướng mã cho máy tóm tắt sách bao gồm việc t
 - Sau khi tạo bản tóm tắt, có thể cần phải tinh chỉnh nó bằng cách sửa lỗi ngữ pháp, đảm bảo tính mạch lạc và cải thiện khả năng đọc. Bước này có thể liên quan đến các kỹ thuật NLP bổ sung hoặc chỉnh sửa thủ công.
 
 Tạo một máy tóm tắt sách là một nhiệm vụ phức tạp nhưng có thể đạt được khi kết hợp các kỹ thuật NLP nâng cao với các thuật toán học máy. Điều quan trọng là liên tục cải tiến mô hình bằng cách đào tạo nó trên nhiều bộ sách khác nhau, liên tục đánh giá hiệu suất của nó và thực hiện các điều chỉnh cần thiết đối với các thành phần tiền xử lý, trích xuất tính năng và tóm tắt của mô hình.
+
+
+-----------------------------
+Đồ thị tri thực
+
+Để tạo một hệ thống tóm tắt văn bản bằng đồ thị tri thức, bạn có thể sử dụng các thư viện xử lý ngôn ngữ tự nhiên (NLP) như SpaCy hoặc NLTK trong Python, cùng với các thư viện đồ thị như NetworkX. Dưới đây là một hướng dẫn step-by-step để xây dựng một phần của hệ thống này:
+
+Tiền xử lý văn bản:
+
+Sử dụng thư viện NLP như SpaCy để phân tích văn bản thành các thực thể và mối quan hệ.
+Tokenize văn bản thành các câu và từ.
+Trích xuất thực thể và mối quan hệ:
+
+Sử dụng các công cụ như Named Entity Recognition (NER) để xác định các thực thể như người, địa điểm, tổ chức, v.v.
+Sử dụng dependency parsing để xác định mối quan hệ cú pháp giữa các từ trong câu.
+Xây dựng đồ thị tri thức:
+
+Sử dụng thông tin từ bước trước để tạo ra một đồ thị, trong đó các thực thể là các nút và mối quan hệ là các cạnh.
+Sử dụng thư viện đồ thị như NetworkX để tạo và quản lý đồ thị.
+Trích xuất thông tin từ đồ thị:
+
+Sử dụng các thuật toán đồ thị như tìm kiếm đường đi ngắn nhất, tìm kiếm theo chiều sâu (DFS), hoặc tìm kiếm theo chiều rộng (BFS) để trích xuất thông tin từ đồ thị.
+Tạo tóm tắt và hiển thị kết quả:
+
+Dựa trên thông tin được trích xuất, tạo ra một tóm tắt cấu trúc hoặc biểu đồ để hiển thị thông tin một cách trực quan và dễ hiểu.

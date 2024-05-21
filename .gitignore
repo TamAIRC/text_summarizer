@@ -1,6 +1,6 @@
 .conda
 .venv
 __pycache__
+__pycache__/*
 poppler-*
 *.bin
-src_old

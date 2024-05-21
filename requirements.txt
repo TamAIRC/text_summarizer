@@ -14,8 +14,17 @@ openpyxl
 # text
 Unidecode
 underthesea
+pyvi
 
 # pyvi
 pytorch-nlp
 
 scikit-learn
+
+# VietnameseOcrCorrection
+numpy
+lmdb
+tqdm
+unicodedata2
+nltk
+jupyter-notebook
