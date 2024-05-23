@@ -23,6 +23,6 @@ python -m pip install --upgrade pip
 python setup.py
 ```
 
-**Run API
+**Run API**
 ```streamlit run api_treamlit.py```
 
