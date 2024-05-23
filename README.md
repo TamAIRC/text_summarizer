@@ -22,3 +22,7 @@ python -m pip install --upgrade pip
 ```bash
 python setup.py
 ```
+
+**Run API
+```streamlit run api_treamlit.py```
+
