@@ -108,12 +108,13 @@ def detect_text_area(image):
     return regions
 
 
-def detect_line_word(image):
+def detect_line_word(image, is_menu=False):
     """
     Detects lines of text in the given image and groups them into lines.
 
     Parameters:
         image (numpy.ndarray): The input image containing text.
+        is_menu (bool, optional): A boolean flag indicating whether the text is part of a menu. Default is False.
 
     Returns:
         list: A list of bounding rectangles representing lines of text.
@@ -128,9 +129,7 @@ def detect_line_word(image):
     for hull in hulls:
         x, y, w, h = cv2.boundingRect(hull)
         # Check if there is a large enough gap to start a new line
-        if (
-            current_line and y - current_line[-1][1] > h * 1.2
-        ):
+        if current_line and y - current_line[-1][1] > h * 1.2:
             lines.append(current_line)
             current_line = []
         current_line.append((x, y, x + w, y + h))
@@ -140,9 +139,12 @@ def detect_line_word(image):
     # Calculate average line spacing
     avg_line_spacing = sum(line[0][1] - line[-1][3] for line in lines) / len(lines)
 
-    # Calculate margin based on average line spacing
-    ratio = 3 #8
-    line_margin = int((avg_line_spacing / ratio))
+    # Margin Calculation: It calculates the margin based on the average line spacing.
+    # If is_menu is True, it adjusts the margin accordingly.
+    ratio_percent = 0.3  # 8
+    if is_menu:
+        ratio_percent = 0.2  # 8
+    line_margin = int(avg_line_spacing * ratio_percent)
     # Lấy kích thước ảnh
     # height, width = image.shape[:2]
 

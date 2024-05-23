@@ -20,16 +20,29 @@ class BasicDataset(Dataset):
         # read data
         self.vocab = Vocab(alphabet)
         self.lmdb_path = lmdb_path
-        self.env = lmdb.open(lmdb_path, max_readers=126, readonly=True, lock=False, readahead=False, meminit=False)
+        self.env = lmdb.open(
+            lmdb_path,
+            max_readers=126,
+            readonly=True,
+            lock=False,
+            readahead=False,
+            meminit=False,
+        )
         self.txn = self.env.begin(write=False)
-        self.nSamples = int(self.txn.get('num-samples'.encode()))
+        self.nSamples = int(self.txn.get("num-samples".encode()))
         self.cluster_indices = defaultdict(list)
         self.build_cluster_indices()
-    
+
     def build_cluster_indices(self):
         error = 0
-        if not os.path.isfile(os.path.basename(self.lmdb_path) + '.json'):
-            pbar = tqdm(range(self.__len__()), desc='{} build cluster'.format(self.__len__()), ncols=100, position=0, leave=True)
+        if not os.path.isfile(os.path.basename(self.lmdb_path) + ".json"):
+            pbar = tqdm(
+                range(self.__len__()),
+                desc="{} build cluster".format(self.__len__()),
+                ncols=100,
+                position=0,
+                leave=True,
+            )
             for i in pbar:
                 text = self.read_data(i)
                 if text is None or len(text) > 200:
@@ -40,14 +53,16 @@ class BasicDataset(Dataset):
                 bucket_size = get_bucket(w)
                 self.cluster_indices[int(bucket_size)].append(i)
 
-            print('Remove {} images'.format(error))
+            print("Remove {} images".format(error))
             data = json.dumps(self.cluster_indices)
-            f = open(os.path.basename(self.lmdb_path) + '.json', "w")
+            f = open(os.path.basename(self.lmdb_path) + ".json", "w")
             f.write(data)
             f.close()
         else:
             # Opening JSON file
-            f = open(os.path.basename(self.lmdb_path) + '.json',)
+            f = open(
+                os.path.basename(self.lmdb_path) + ".json",
+            )
 
             # returns JSON object as
             # a dictionary
@@ -55,10 +70,12 @@ class BasicDataset(Dataset):
 
             for bucket_size in data:
                 if len(data[str(bucket_size)]) > 0:
-                    self.cluster_indices[int(bucket_size)].extend(data[str(bucket_size)])
+                    self.cluster_indices[int(bucket_size)].extend(
+                        data[str(bucket_size)]
+                    )
 
     def read_data(self, idx):
-        textKey = 'text-%12d' % idx
+        textKey = "text-%12d" % idx
         text = self.txn.get(textKey.encode()).decode()
 
         return text
@@ -72,7 +89,7 @@ class BasicDataset(Dataset):
                 words[i] = unidecode.unidecode(words[i])
                 break
 
-        return ' '.join(words)
+        return " ".join(words)
 
     def remove_random_space(self, text):
         words = text.split()
@@ -84,7 +101,13 @@ class BasicDataset(Dataset):
         else:
             end = np.random.randint(low=start, high=n_words, size=1)[0]
 
-        out = ' '.join(words[:start])  + ' ' + ''.join(words[start:end + 1]) + ' ' + ' '.join(words[end + 1:])
+        out = (
+            " ".join(words[:start])
+            + " "
+            + "".join(words[start : end + 1])
+            + " "
+            + " ".join(words[end + 1 :])
+        )
 
         return out.strip()
 
@@ -94,9 +117,13 @@ class BasicDataset(Dataset):
         return match_chars
 
     def _random_replace(self, text, match_chars):
-        replace_char = match_chars[np.random.randint(low=0, high=len(match_chars), size=1)[0]]
+        replace_char = match_chars[
+            np.random.randint(low=0, high=len(match_chars), size=1)[0]
+        ]
         insert_chars = same_chars[unidecode.unidecode(replace_char)]
-        insert_char = insert_chars[np.random.randint(low=0, high=len(insert_chars), size=1)[0]]
+        insert_char = insert_chars[
+            np.random.randint(low=0, high=len(insert_chars), size=1)[0]
+        ]
         text = text.replace(replace_char, insert_char, 1)
 
         return text
@@ -119,7 +146,7 @@ class BasicDataset(Dataset):
                 words[i] = self.change(words[i])
                 break
 
-        return ' '.join(words)
+        return " ".join(words)
 
     def upper(self, text, ratio=0.1):
         words = text.split()
@@ -143,7 +170,7 @@ class BasicDataset(Dataset):
             if cnt_word >= 1:
                 break
 
-        return  ' '.join(words)
+        return " ".join(words)
 
     def __getitem__(self, idx):
         ori = self.read_data(idx)
@@ -156,7 +183,7 @@ class BasicDataset(Dataset):
             elif rd_aug_idx < 6:
                 text = self.replace_accent_chars(ori, ratio=0.3)
             elif rd_aug_idx < 8:
-                text  = self.upper(ori, ratio=0.3)
+                text = self.upper(ori, ratio=0.3)
             else:
                 text = self.remove_random_space(ori)
         else:
@@ -165,10 +192,11 @@ class BasicDataset(Dataset):
         input_text = self.vocab.encode(text)
         gts = self.vocab.encode(gts)
 
-        return {'text': input_text, 'label': gts}
+        return {"text": input_text, "label": gts}
 
     def __len__(self):
         return self.nSamples
+
 
 class ClusterRandomSampler(Sampler):
     def __init__(self, data_source, batch_size, shuffle=True):
@@ -187,7 +215,10 @@ class ClusterRandomSampler(Sampler):
             if self.shuffle:
                 random.shuffle(cluster_indices)
 
-            batches = [cluster_indices[i:i + self.batch_size] for i in range(0, len(cluster_indices), self.batch_size)]
+            batches = [
+                cluster_indices[i : i + self.batch_size]
+                for i in range(0, len(cluster_indices), self.batch_size)
+            ]
             batches = [_ for _ in batches if len(_) == self.batch_size]
 
             if self.shuffle:
@@ -205,15 +236,16 @@ class ClusterRandomSampler(Sampler):
     def __len__(self):
         return len(self.data_source)
 
+
 class Collator(object):
     def __call__(self, batch):
         text_data = []
         tgt_input = []
         target_weights = []
 
-        MAXLEN = max(len(sample['label']) for sample in batch)
+        MAXLEN = max(len(sample["label"]) for sample in batch)
         for sample in batch:
-            text, label = sample['text'], sample['label']
+            text, label = sample["text"], sample["label"]
             label_len = len(label)
             text_len = len(text)
 
@@ -224,14 +256,23 @@ class Collator(object):
             tgt_input.append(tgt)
             one_mask_len = label_len - 1
 
-            target_weights.append(np.concatenate((
-                np.ones(one_mask_len, dtype=np.float32),
-                np.zeros(MAXLEN - one_mask_len, dtype=np.float32))))
+            target_weights.append(
+                np.concatenate(
+                    (
+                        np.ones(one_mask_len, dtype=np.float32),
+                        np.zeros(MAXLEN - one_mask_len, dtype=np.float32),
+                    )
+                )
+            )
 
         tgt_input = np.array(tgt_input, dtype=np.int64).T
         tgt_output = np.roll(tgt_input, -1, 0).T
         tgt_output[:, -1] = 0
         tgt_padding_mask = np.array(target_weights) == 0
 
-
-        return torch.LongTensor(text_data), torch.LongTensor(tgt_input), torch.LongTensor(tgt_output), torch.BoolTensor(tgt_padding_mask)
+        return (
+            torch.LongTensor(text_data),
+            torch.LongTensor(tgt_input),
+            torch.LongTensor(tgt_output),
+            torch.BoolTensor(tgt_padding_mask),
+        )

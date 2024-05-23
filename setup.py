@@ -1,8 +1,14 @@
 import io
 import zipfile
 import os
-import requests
 import subprocess
+
+try:
+    import requests
+except ModuleNotFoundError as e:
+    # print("Requests module not found:", e)
+    subprocess.run(["pip", "install", "requests"])
+    import requests
 
 
 def download_file(url, folder, filename):
@@ -86,23 +92,29 @@ def download_and_extract_zip(url, extract_path="."):
 
 
 def main():
-        # Sử dụng lệnh pip để cài đặt các gói cần thiết
+    # Sử dụng lệnh pip để cài đặt các gói cần thiết
     subprocess.run(
         [
-            "pip", "install", "torch", "torchvision", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cu121",
+            "pip",
+            "install",
+            "torch",
+            "torchvision",
+            "torchaudio",
+            "--index-url",
+            "https://download.pytorch.org/whl/cu121",
         ]
     )
     # Sử dụng lệnh pip để cài đặt các gói cần thiết
-    subprocess.run(["python", "-m", "pip", "install", "-r", "requirements.txt"])
+    subprocess.run(["pip", "install", "-r", "requirements.txt"])
 
     tools_support = "./tools"
     # Example usage:
     print("Dowload poppler.")
     url_poppler = "https://github.com/oschwartz10612/poppler-windows/releases/download/v24.02.0-0/Release-24.02.0-0.zip"
     download_and_extract_zip(url_poppler, tools_support)
-    stopword_link = "https://raw.githubusercontent.com/stopwords/vietnamese-stopwords/master/vietnamese-stopwords.txt"
-    stopwords_folder = "./models/stopwords"
-    download_file(stopword_link, stopwords_folder, "vietnamese.txt")
+    # stopword_link = "https://raw.githubusercontent.com/stopwords/vietnamese-stopwords/master/vietnamese-stopwords.txt"
+    # stopwords_folder = "./models/stopwords"
+    # download_file(stopword_link, stopwords_folder, "vietnamese.txt")
 
 
 if __name__ == "__main__":

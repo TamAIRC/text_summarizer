@@ -1,7 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from model.attention import Attention
+
+try:
+    from model.attention import Attention
+except ImportError:
+    from src.VietnameseOcrCorrection.model.attention import Attention
+
 
 class AttnDecoderRNN(nn.Module):
     def __init__(self, hidden_size, output_size, dropout_p=0.1):

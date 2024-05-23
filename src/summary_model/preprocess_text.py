@@ -3,12 +3,15 @@ from underthesea import sent_tokenize, word_tokenize, text_normalize
 
 try:
     from config.config import STOPWORDS_USE
+    from config.config_text import VI_TEXT_LOWERCASE, VI_TEXT_UPPERCASE
 except ImportError:
     from helpers import add_path_init
 
     add_path_init()
 
     from config import STOPWORDS_USE
+    from config_text import VI_TEXT_LOWERCASE, VI_TEXT_UPPERCASE
+
 
 # Pre-compile regular expressions
 HTML_TAG_RE = re.compile(r"<[^>]+>")
@@ -20,12 +23,8 @@ EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
 # Pre-compile regex pattern for save_key
 SAVE_KEY_REGEX_PATTERN = re.compile(
     r"[^a-zA-Z0-9\s{}{}]".format(
-        re.escape(
-            "ỹáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ/"
-        ),
-        re.escape(
-            "ỸÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴĐ/"
-        ),
+        re.escape(VI_TEXT_LOWERCASE),
+        re.escape(VI_TEXT_UPPERCASE),
     )
 )
 
