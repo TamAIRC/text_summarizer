@@ -13,7 +13,7 @@ openpyxl
 
 # text
 Unidecode
-underthesea
+#underthesea
 pyvi
 
 # pyvi
@@ -23,8 +23,8 @@ scikit-learn
 
 # VietnameseOcrCorrection
 numpy
-lmdb
+#lmdb
 tqdm
 unicodedata2
 nltk
-jupyter-notebook
+streamlit

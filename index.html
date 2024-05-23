@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tóm tắt văn bản</title>
+    <script>
+        async function uploadFile(event) {
+            event.preventDefault();
+            const formData = new FormData();
+            const fileField = document.querySelector('input[type="file"]');
+
+            if (!fileField.files.length) {
+                alert("Please choose a file to upload.");
+                return;
+            }
+
+            formData.append('pdfFile', fileField.files[0]);
+
+            const response = await fetch('http://192.168.1.23:5555/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                document.getElementById('uploadButton').style.display = 'none';
+                document.getElementById('summaryButton').style.display = 'inline-block';
+                document.getElementById('summaryResult').innerText = result.summary;
+                // alert("Tóm tắt thành công");
+            } else {
+                alert("Tệp tải lên bị lỗi, vui lòng thử lại");
+            }
+        }
+
+        // async function summarizeContent() {
+        //     const response = await fetch('http://192.168.1.23:5555/summarize', {
+        //         method: 'POST',
+        //     });
+
+        //     if (response.ok) {
+        //         const result = await response.json();
+        //         document.getElementById('summaryResult').innerText = result.summary;
+        //     } else {
+        //         alert("Failed to summarize the content. Please try again.");
+        //     }
+        // }
+    </script>
+</head>
+<body>
+    <h1>Tải lên một tệp PDF</h1>
+    <form id="uploadForm" onsubmit="uploadFile(event)">
+        <label for="pdfFile">Chọn tệp PDF</label>
+        <input type="file" id="pdfFile" name="pdfFile" accept=".pdf">
+        <button type="submit" id="uploadButton">Tóm tắt</button>
+        <button type="button" id="summaryButton" style="display:none;" onclick="summarizeContent()">Tóm tắt</button>
+    </form>
+    <h3>Kết quả tóm tắt</h3>
+    <div id="summaryResult"></div>
+</body>
+</html>

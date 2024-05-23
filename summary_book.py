@@ -1,10 +1,8 @@
 import re
-import time
 from config.config_text import (
     CHAPTER_KEYWORD,
     CHAPTER_KEYWORD_NUMBER,
     CHAPTER_LV1,
-    LV1_KEYWORDS,
     VI_TEXT_LOWERCASE,
     VI_TEXT_UPPERCASE,
 )
@@ -20,185 +18,127 @@ from src.VietnameseOcrCorrection.config import LINK_MODEL_SEQ2SEQ
 from src.VietnameseOcrCorrection.tool.predictor import Predictor
 from tools.save_step import save_crop_image, save_menu_to_txt
 
+class SummaryBook:
+    def __init__(self):
+        self.load_model()
 
-def load_model():
-    pytesseract.pytesseract.tesseract_cmd = config.TESSERACT_LINK
+    def load_model(self):
+        pytesseract.pytesseract.tesseract_cmd = config.TESSERACT_LINK
 
+    def get_pdf_page_count(self, file_path):
+        return len(convert_from_path(file_path))
 
-# Get total number of pages in PDF
-def get_pdf_page_count(file_path):
-    return len(convert_from_path(file_path))
+    def determine_summary_size(self, book_size, size_sumary, is_page=True, word_in_page=400):
+        if is_page:
+            return int(round(size_sumary * word_in_page))
+        return int(round(book_size * size_sumary / 100 * word_in_page))
 
+    def is_table_of_contents(self, text, chapter_lv1):
+        text = text.lower()
+        lines = text.split("\n")
+        for line in lines:
+            if line.strip().startswith(chapter_lv1):
+                return True
+        for i in range(len(lines)):
+            if lines[i].strip().startswith(chapter_lv1):
+                for j in range(i + 1, min(i + 4, len(lines))):
+                    if lines[j].strip().startswith(tuple(CHAPTER_KEYWORD_NUMBER)):
+                        return True
+        return False
 
-def determine_summary_size(
-    book_size: int, size_sumary: int, is_page=True, word_in_page=400
-):
-    """
-    Determine the size of the summary in terms of number of words.
-
-    Parameters:
-        book_size (int): Number of pages in the book.
-        size_sumary (int): Size of the summary in percentage (if is_page is False) or in pages (if is_page is True).
-        is_page (bool): True if size_sumary is in pages, False if size_sumary is in percentage of book size.
-        word_in_page (int): Average number of words per page.
-
-    Returns:
-        int: Size of the summary in terms of number of words.
-    """
-    if is_page:
-        return int(round(size_sumary * word_in_page))
-    return int(round(book_size * size_sumary / 100 * word_in_page))
-
-
-def is_table_of_contents(text, chapter_lv1):
-    text = text.lower()
-    lines = text.split("\n")
-    # Kiểm tra xem có ít nhất một dòng bắt đầu bằng số hoặc từ khóa
-    for line in lines:
-        if line.strip().startswith(chapter_lv1):
-            return True
-    # Kiểm tra xem có ít nhất một dòng chứa các tiêu đề có độ sâu lồng nhau không
-    for i in range(len(lines)):
-        if lines[i].strip().startswith(chapter_lv1):
-            for j in range(i + 1, min(i + 4, len(lines))):
-                if lines[j].strip().startswith(tuple(CHAPTER_KEYWORD_NUMBER)):
-                    return True
-    return False
-
-
-def clear_text(text):
-    SAVE_KEY_REGEX_PATTERN = re.compile(
-        r"[^a-zA-Z0-9\s\t\.\,{}()\-/{}]".format(
-            re.escape(VI_TEXT_LOWERCASE),
-            re.escape(VI_TEXT_UPPERCASE),
+    def clear_text(self, text):
+        SAVE_KEY_REGEX_PATTERN = re.compile(
+            r"[^a-zA-Z0-9\s\t\.\,{}()\-/{}]".format(
+                re.escape(VI_TEXT_LOWERCASE),
+                re.escape(VI_TEXT_UPPERCASE),
+            )
         )
-    )
-    text = SAVE_KEY_REGEX_PATTERN.sub(" ", text)
-    text = re.sub(r"\t|\n", " ", text)
-    text = re.sub(r"\.{2,}", "", text)
-    text = re.sub(r"\s{2,}", " ", text)
-    text = re.sub(r" \.", ".", text)
-    text = text.rstrip()
-    return text
-    # text = re.sub(r"\t|\n|\s{2,}|\.{2,}", " ", text)
-    # text = re.sub(r" \.", ".", text).strip()
-    # return text
+        text = SAVE_KEY_REGEX_PATTERN.sub(" ", text)
+        text = re.sub(r"\t|\n", " ", text)
+        text = re.sub(r"\.{2,}", "", text)
+        text = re.sub(r"\s{2,}", " ", text)
+        text = re.sub(r" \.", ".", text)
+        text = text.rstrip()
+        return text
 
+    def correct_text(self, text):
+        model_predictor = Predictor(
+            device="cpu",
+            model_type="seq2seq",
+            weight_path=LINK_MODEL_SEQ2SEQ,
+        )
+        outs = model_predictor.predict(text.strip(), NGRAM=6)
+        return outs
 
-def correct_text(text):
-    model_predictor = Predictor(
-        device="cpu",
-        model_type="seq2seq",
-        weight_path=LINK_MODEL_SEQ2SEQ,
-    )
-    outs = model_predictor.predict(text.strip(), NGRAM=6)
-    return outs
+    def extract_table_of_contents(self, list_page):
+        last_toc_page, table_of_contents = None, []
+        for i, page in enumerate(list_page):
+            lines_rects = detect_line_word(page, is_menu=True)
+            is_menu = 0
+            page_content = []
 
+            for j, line in enumerate(lines_rects):
+                roi = crop_box(page, line)
+                text_line = pytesseract.image_to_string(roi, lang="vie")
 
-# Extract table of contents from pages
-def extract_table_of_contents(list_page):
-    # Kết hợp danh sách LV1_KEYWORDS và CHAPTER_KEYWORD
+                if len(text_line) != 0:
+                    text_line = self.clear_text(text_line)
+                    text_line = text_line.rstrip(".")
 
-    last_toc_page, table_of_contents = None, []
-    for i, page in enumerate(list_page):
-        lines_rects = detect_line_word(page, is_menu=True)
-        is_menu = 0
-        page_content = []
+                    if self.is_table_of_contents(text_line, CHAPTER_LV1):
+                        is_menu += 1
 
-        for j, line in enumerate(lines_rects):
-            save_crop_image(page, line, f"line_{i}_{j}")
-            roi = crop_box(page, line)
-            text_line = pytesseract.image_to_string(roi, lang="vie")
+                    page_content.append(text_line)
 
-            if len(text_line) != 0:
-                print(f"text_{i}_{j}: {text_line}")
-                text_line = clear_text(text_line)
-                try:
-                    text_line = correct_text(text_line)
-                except:
-                    print(f"line {i}_{j}: False")
-                    continue
-                print(f"line {i}_{j}: {text_line}")
-                text_line = text_line.rstrip(".")
+            if is_menu == 0 or is_menu < (len(lines_rects) - 5):
+                continue
+            else:
+                last_toc_page = i + 1
+                table_of_contents += page_content
 
-                if is_table_of_contents(text_line, CHAPTER_LV1):
-                    is_menu += 1
+        return last_toc_page, table_of_contents
 
-                page_content.append(text_line)
+    def ocr_content(self, list_page):
+        text = ""
 
-        if is_menu == 0 or is_menu < (len(lines_rects) - 5):
-            continue
-        else:
-            last_toc_page = i + 1
-            table_of_contents += page_content
+        for page in list_page:
+            lines_rects = detect_line_word(page)
 
-    return last_toc_page, table_of_contents
+            for line in lines_rects:
+                roi = crop_box(page, line)
+                text_line = pytesseract.image_to_string(roi, lang="vie").strip()
+                text_line = self.clear_text(text_line)
+                text += text_line + " "
 
+        return text
 
-def ocr_content(list_page):
-    text = ""
+    def summary_book(self, book_link, size_sumary, is_page=True):
+        text_sumary = "Nội dung tóm tắt"
+        pages_np = pdf_to_image_np(book_link)
+        numbers_page_use_check_menu = 5
 
-    for page in list_page:
-        lines_rects = detect_line_word(page)
+        list_page_check_menu = pages_np[:numbers_page_use_check_menu]
+        last_toc_page, table_of_contents = self.extract_table_of_contents(list_page_check_menu)
+        table_of_contents = assign_levels(table_of_contents)
+        save_menu_to_txt(table_of_contents, file_path="./output/menu2.txt")
+        pages_np_content = pages_np[last_toc_page:]
 
-        for line in lines_rects:
-            roi = crop_box(page, line)
-            text_line = pytesseract.image_to_string(roi, lang="vie").strip()
-            text_line = clear_text(text_line)
-            text += text_line + " "
+        content_book = self.ocr_content(pages_np_content)
+        chapter_content = split_content_by_toc(content_book, table_of_contents)
 
-    return text
+        summarize_all = ""
+        for i, chapter_content_item in enumerate(chapter_content):
+            percent = 20
+            chapter_summarize = summarize_text(chapter_content_item, percent)
+            summarize_all += "Chapter " + str(i) + ": " + chapter_summarize + "\n"
 
-
-def sumary_book(book_link, size_sumary, is_page=True):
-    load_model()
-
-    text_sumary = "Nội dung tóm tắt"
-    # Step 1
-    pages_np = pdf_to_image_np(book_link)
-    len_pages = len(pages_np)
-    # words_to_summarize = determine_summary_size(len_pages, size_sumary, is_page)
-
-    # numbers_page_use_check_menu = round(len_pages * 0.2)
-    numbers_page_use_check_menu = 10
-
-    # list_page_check_menu = pages_np[:numbers_page_use_check_menu]
-    list_page_check_menu = pages_np
-
-    last_toc_page, table_of_contents = extract_table_of_contents(list_page_check_menu)
-    print(table_of_contents)
-    # save_menu_to_txt(table_of_contents, file_path="./output/menu1.txt")
-    # table_of_contents = assign_levels(table_of_contents)
-    # print(f"table_of_contents={table_of_contents}")
-    # save_menu_to_txt(table_of_contents, file_path="./output/menu2.txt")
-    # pages_np_content = pages_np[last_toc_page:]
-
-    # # OCR nội dung sách
-    # content_book = ocr_content(pages_np_content)
-
-    # chapter_content = split_content_by_toc(content_book, table_of_contents)
-    # summarize_all = ""
-    # for i, chapter_content_item in enumerate(chapter_content):
-    #     percent = 20
-    #     chapter_summarize = summarize_text(chapter_content_item, percent)
-    #     # summarize_all.append(chapter_summarize)
-    #     summarize_all += "Chapter " + str(i) + ": " + chapter_summarize + "\n"
-
-    # with open("./output/noidung_tomtat.txt", "w", encoding="utf-8") as file:
-    #     file.write(summarize_all)
-    # return text_sumary
-
-
-def main():
-    # book_link = "./datasets/book_test/Bup-Sen-xanh.pdf"
-    # book_link = "./datasets/book_test/book_kiemthuvadambaochatluongPM.pdf"
-    book_link = "./datasets/book_test/mucluc_book_KTvaDBCLPM-trang1-3.pdf"
-    size_sumary = 20
-    # Tóm tắt page - True | format % - False
-    is_page = False
-    sumary_book(book_link, size_sumary, is_page)
-    return
-
+        with open("./output/noidung_tomtat1.txt", "w", encoding="utf-8") as file:
+            file.write(summarize_all)
+        return text_sumary
 
 if __name__ == "__main__":
-    main()
+    book_link = "./datasets/book_test/book_kiemthuvadambaochatluongPM-1-10.pdf"
+    size_sumary = 20
+    is_page = False
+    summarizer = SummaryBook()
+    summarizer.summary_book(book_link, size_sumary, is_page)

@@ -5,6 +5,7 @@
 ### Prerequisites
 
 1. Python >= 11.
+2. Tesseract
 
 ### Installation
 

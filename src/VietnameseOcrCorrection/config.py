@@ -139,5 +139,5 @@ indices = [alphabet.index(c) + 4 for c in accented_chars_vietnamese]
 vocab_size = len(alphabet)
 litle_char = list('"#$%&' "()*+,-./:;<=>?@[\]^_{|}~")
 
-LINK_MODEL_SEQ2SEQ = "D:/Product/deploy/api_text_summarizer/src/VietnameseOcrCorrection/weights/seq2seq_0.pth"
-LINK_TRANSFORMER = "D:/Product/deploy/api_text_summarizer/src/VietnameseOcrCorrection/weights/transformer_0.pth"
+LINK_MODEL_SEQ2SEQ = "C:/Users/Admin/Desktop/text_summarizer/src/VietnameseOcrCorrection/weights/seq2seq_0.pth"
+LINK_TRANSFORMER = "C:/Users/Admin/Desktop/text_summarizer/src/VietnameseOcrCorrection/weights/transformer_0.pth"
